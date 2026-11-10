@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>批量下载器</title>
+  <style>
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--blue-pale);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+      color: var(--text);
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 13px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 620px;
+      background: var(--blue-pale);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(13,78,166,0.14);
+      align-self: flex-start;
+    }
+
+    :root {
+      --blue-dark:  #0D4EA6;
+      --blue:       #1A6FD4;
+      --blue-mid:   #2E86E8;
+      --blue-light: #EBF3FD;
+      --blue-pale:  #F4F8FF;
+      --orange:     #FF6A00;
+      --orange-mid: #FF8C2A;
+      --orange-light:#FFF0E6;
+      --white:      #FFFFFF;
+      --text:       #1A2540;
+      --text-mid:   #4A5A7A;
+      --text-muted: #8A96B0;
+      --border:     #D8E4F4;
+      --border-dark:#B0C8EE;
+      --success:    #10A84C;
+      --danger:     #E03030;
+      --warn:       #F59E0B;
+      --radius:     10px;
+      --shadow:     0 2px 12px rgba(13,78,166,0.10);
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 100%);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::after {
+      content: '';
+      position: absolute; top: -30px; right: -30px;
+      width: 100px; height: 100px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .header::before {
+      content: '';
+      position: absolute; bottom: -20px; right: 60px;
+      width: 60px; height: 60px;
+      background: rgba(255,106,0,0.15);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .header-icon {
+      width: 36px; height: 36px;
+      background: rgba(255,255,255,0.18);
+      border: 1.5px solid rgba(255,255,255,0.35);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .header-icon svg { width: 20px; height: 20px; }
+    .header-text { flex: 1; }
+    .header-title {
+      font-weight: 700; font-size: 15px;
+      color: white; letter-spacing: 0.02em; line-height: 1.2;
+    }
+    /* 日期徽标放在 header 右侧 */
+    .date-badge {
+      background: rgba(255,106,0,0.22);
+      color: #FFD0A8;
+      border: 1px solid rgba(255,106,0,0.4);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      flex-shrink: 0;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Main ── */
+    .main { padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 10px; }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    /* ── Textarea ── */
+    .section-label {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px 0;
+    }
+    .label-text {
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+    .link-counter {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 600; color: var(--blue);
+    }
+    textarea {
+      width: 100%; height: 88px;
+      background: transparent;
+      border: none; border-top: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; line-height: 1.7;
+      padding: 10px 12px;
+      resize: none; outline: none; display: block;
+    }
+    textarea::placeholder {
+      color: var(--text-muted);
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 11.5px;
+    }
+
+    /* ── File list ── */
+    .list-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px 0;
+    }
+    .badge {
+      background: var(--blue); color: white;
+      border-radius: 20px; padding: 1px 9px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 700;
+    }
+    .badge.zero { background: var(--border); color: var(--text-muted); }
+
+    /* ── Progress ── */
+    .progress-wrap { padding: 8px 12px 0; display: none; }
+    .progress-wrap.visible { display: block; }
+    .progress-track {
+      height: 4px; background: var(--blue-light);
+      border-radius: 2px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue), var(--orange-mid));
+      border-radius: 2px; transition: width .3s ease;
+    }
+    .progress-text {
+      font-size: 10px; color: var(--text-muted);
+      margin-top: 4px; text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Links list：固定 260px 高，文件再多也只在列表内滚动，窗口总高度不变 ── */
+    .links-list {
+      height: 260px; overflow-y: auto;
+      padding: 8px 8px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .links-list::-webkit-scrollbar { width: 4px; }
+    .links-list::-webkit-scrollbar-track { background: transparent; }
+    .links-list::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 2px; }
+
+    .link-item {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--blue-pale);
+      border: 1px solid var(--border);
+      border-radius: 7px; padding: 6px 10px;
+      transition: border-color .12s;
+    }
+    .link-item.done        { background: #F0FBF4; border-color: rgba(16,168,76,0.25); }
+    .link-item.error       { background: #FFF5F5; border-color: rgba(224,48,48,0.25); }
+    .link-item.downloading { background: #FFFBF0; border-color: rgba(245,158,11,0.35); }
+    .link-item.skipped     { background: #F5F0FF; border-color: rgba(124,77,255,0.3); }
+
+    .link-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      flex-shrink: 0; background: var(--border-dark);
+    }
+    .link-item.done .link-dot        { background: var(--success); }
+    .link-item.error .link-dot       { background: var(--danger); }
+    .link-item.downloading .link-dot { background: var(--warn); animation: pulse 1s infinite; }
+    .link-item.skipped .link-dot     { background: #7C4DFF; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .link-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px; color: var(--text-mid);
+      flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .link-message {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 10px; color: var(--danger);
+      white-space: normal; margin-top: 2px; line-height: 1.4;
+    }
+    .link-item.skipped .link-message { color: #7C4DFF; }
+    .link-item.done .link-message { color: var(--success); }
+    .kind-badge {
+      display: inline-block; font-family: 'Noto Sans SC', sans-serif;
+      font-size: 9.5px; font-weight: 700; line-height: 1;
+      border-radius: 4px; padding: 2px 5px; margin-right: 5px; vertical-align: 1px;
+      background: var(--blue-light); color: var(--blue); border: 1px solid var(--border);
+    }
+    .kind-badge.drive { background: #E8F5E9; color: #1B7A3D; border-color: rgba(16,168,76,.3); }
+    .link-url {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; color: var(--text-muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;
+    }
+    .invalid-wrap { padding: 0 12px 10px; }
+    .invalid-header { font-size: 11px; font-weight: 700; color: #B45F06; margin-bottom: 6px; }
+    .invalid-item { display: flex; gap: 8px; font-size: 11px; padding: 4px 0; border-top: 1px dashed var(--border); }
+    .invalid-line { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-mid); font-family: 'JetBrains Mono', monospace; font-size: 10.5px; }
+    .invalid-reason { flex-shrink: 0; color: #B45F06; }
+    .invalid-more { font-size: 11px; color: var(--text-muted); padding-top: 4px; }
+
+    /* ── Group headers & copy buttons ── */
+    .group-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 6px 4px;
+      font-size: 11.5px; font-weight: 700; color: var(--text-mid);
+    }
+    .group-header .group-count { color: var(--text-muted); font-weight: 500; }
+    .group-copy-btn {
+      margin-left: auto;
+      font-size: 10.5px; font-weight: 700;
+      background: var(--blue-light); color: var(--blue);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 3px 8px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .group-copy-btn:hover { background: var(--blue); color: white; }
+    .group-header.g-failed .group-copy-btn { background: #FFF0F0; color: var(--danger); border-color: rgba(224,48,48,.25); }
+    .group-header.g-failed .group-copy-btn:hover { background: var(--danger); color: white; }
+    .group-header.g-skipped .group-copy-btn { background: #F1EBFF; color: #7C4DFF; border-color: rgba(124,77,255,.25); }
+    .group-header.g-skipped .group-copy-btn:hover { background: #7C4DFF; color: white; }
+
+    .icon-btn {
+      width: 22px; height: 22px; flex-shrink: 0;
+      border: none; background: transparent; color: var(--text-muted);
+      cursor: pointer; border-radius: 5px; font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .icon-btn:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+    .icon-btn.copied { color: var(--success); }
+    .link-status { font-size: 10.5px; color: var(--text-muted); flex-shrink: 0; font-weight: 500; }
+    .link-item.done .link-status        { color: var(--success); }
+    .link-item.error .link-status       { color: var(--danger); }
+    .link-item.downloading .link-status { color: var(--warn); }
+    .link-item.skipped .link-status     { color: #7C4DFF; }
+    /* 右侧：状态 + 文件大小（确认稿改动 2） */
+    .link-side { flex-shrink: 0; text-align: right; }
+    .link-size { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-mid); margin-top: 1px; }
+    .link-size.unknown { font-family: 'Noto Sans SC', sans-serif; color: var(--text-muted); }
+
+    /* 下载完成后的汇总行：只在全部下载结束时出现 */
+    .summary-line { padding: 8px 12px 0; font-size: 11.5px; font-weight: 700; display: none; }
+    .summary-line.visible { display: block; }
+    .summary-line.ok { color: var(--success); }
+    .summary-line.bad { color: var(--danger); }
+
+    /* ── Folder bar ── */
+    .settings-btn {
+      width: 30px; height: 30px; flex-shrink: 0;
+      background: rgba(255,255,255,0.16);
+      border: 1.5px solid rgba(255,255,255,0.32);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: white; transition: background .15s;
+      position: relative; z-index: 2;
+    }
+    .settings-btn:hover { background: rgba(255,255,255,0.28); }
+    .settings-btn svg { width: 15px; height: 15px; }
+
+    /* ── 版本药丸（点它就是一次手动检查更新）── */
+    .version-pill {
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.16);
+      border: 1.5px solid rgba(255,255,255,0.32);
+      border-radius: 20px;
+      padding: 4px 10px;
+      color: white;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: background .15s;
+      position: relative; z-index: 2;
+    }
+    .version-pill:hover { background: rgba(255,255,255,0.28); }
+    .version-pill.update-available { background: var(--orange); border-color: var(--orange); }
+
+    /* ── 气泡提醒 ── */
+    .toast {
+      position: fixed; left: 50%; bottom: 72px;
+      transform: translateX(-50%) translateY(8px);
+      max-width: 320px;
+      background: rgba(30,30,30,.92); color: #fff;
+      font-size: 12px; line-height: 1.4;
+      padding: 8px 14px; border-radius: 16px; text-align: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s, transform .2s; z-index: 30;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── 更新窗口 ── */
+    .upd-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 20; padding: 16px;
+    }
+    .upd-overlay.hidden { display: none; }
+    .upd-box {
+      background: #fff; border-radius: 12px;
+      width: 100%; max-width: 340px; padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .upd-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+    .upd-head h2 { flex: 1; font-size: 15px; font-weight: 700; }
+    .upd-close { flex: none; border: none; background: none; font-size: 16px; cursor: pointer; color: #666; line-height: 1; padding: 2px 4px; }
+    .upd-versions { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; }
+    .upd-versions .cur { color: #888; }
+    .upd-versions .arrow { color: #888; }
+    .upd-versions .new { font-weight: 700; color: var(--blue); }
+    .upd-name { font-size: 13px; font-weight: 600; margin-bottom: 6px; word-break: break-word; }
+    .upd-name.hidden { display: none; }
+    .upd-notes { font-size: 12px; color: #555; line-height: 1.6; white-space: pre-wrap; word-break: break-word; max-height: 120px; overflow-y: auto; margin-bottom: 10px; }
+    .upd-notes.hidden { display: none; }
+    .upd-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    .upd-btns button { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid #e0e0e0; background: #fff; color: #333; }
+    .upd-btns button.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .upd-btns button:hover { opacity: .88; }
+
+    .folder-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px;
+      font-size: 11px;
+    }
+    .folder-bar .icon { font-size: 13px; }
+    .folder-bar .txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-mid); }
+    .folder-bar.warn { background: #FFF7E6; border-bottom: 1px solid rgba(245,158,11,.35); }
+    .folder-bar.warn .txt { color: #B45F06; font-weight: 600; }
+    .folder-bar.ok { background: var(--blue-light); }
+    .folder-bar a.link-btn {
+      font-size: 11px; font-weight: 700; color: var(--blue);
+      text-decoration: underline; cursor: pointer; flex-shrink: 0;
+    }
+    .folder-bar.warn a.link-btn { color: #B45F06; }
+
+    .remove-btn {
+      background: none; border: none;
+      color: var(--text-muted); cursor: pointer;
+      font-size: 13px; padding: 0 2px;
+      flex-shrink: 0; line-height: 1;
+      opacity: 0; transition: opacity .1s;
+    }
+    .link-item:hover .remove-btn { opacity: 1; }
+    .remove-btn:hover { color: var(--danger); }
+
+    .empty-hint {
+      text-align: center;
+      color: var(--text-muted); font-size: 12px;
+      padding: 24px 0;
+    }
+    .empty-hint .empty-icon { font-size: 28px; display: block; margin-bottom: 6px; opacity: .5; }
+
+    /* ── Footer ── */
+    .footer {
+      display: flex; gap: 8px;
+      padding: 12px 14px;
+      background: white;
+      border-top: 1px solid var(--border);
+    }
+    .btn {
+      flex: 1; height: 38px;
+      border-radius: 9px;
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all .15s;
+      border: none;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .btn-ghost {
+      background: var(--blue-light); color: var(--blue);
+      border: 1px solid var(--border-dark);
+    }
+    .btn-ghost:hover:not(:disabled) {
+      background: var(--blue-pale); border-color: var(--blue-mid);
+    }
+    /* 确认稿改动 1：打开文件夹按钮（默认隐藏，下载完成且至少成功 1 个时才出现） */
+    .btn-folder {
+      background: var(--white); color: var(--blue-dark);
+      border: 1.5px solid var(--blue); flex: 0.95;
+    }
+    .btn-folder:hover:not(:disabled) { background: var(--blue-light); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--orange-mid) 0%, var(--orange) 100%);
+      color: white;
+      box-shadow: 0 3px 10px rgba(255,106,0,0.3);
+      position: relative; overflow: hidden;
+    }
+    .btn-primary:hover:not(:disabled) {
+      filter: brightness(1.06);
+      box-shadow: 0 4px 14px rgba(255,106,0,0.4);
+    }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+    .btn-primary::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.2) 50%, transparent 60%);
+      transform: translateX(-100%); transition: transform .4s;
+    }
+    .btn-primary:not(:disabled):hover::after { transform: translateX(100%); }
+    .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M12 3C9.24 3 6.9 4.78 6.1 7.26C4.36 7.68 3 9.23 3 11.1C3 13.15 4.65 14.8 6.7 14.8H17.3C19.35 14.8 21 13.15 21 11.1C21 9.23 19.64 7.68 17.9 7.26C17.1 4.78 14.76 3 12 3Z" fill="white" opacity="0.9"/>
+        <path d="M12 17V22M12 22L9.5 19.5M12 22L14.5 19.5" stroke="#FF8C2A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <div class="header-title">批量下载器</div>
+    </div>
+    <button class="version-pill" id="versionPill" title="点击检查更新">v1.0.0</button>
+    <div class="settings-btn" id="settingsBtn" title="设置保存文件夹">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.14.31.22.65.22 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Folder status bar -->
+  <div class="folder-bar ok" id="folderBar">
+    <span class="icon">📁</span>
+    <span class="txt" id="folderBarText">正在检测保存文件夹…</span>
+    <a class="link-btn" id="folderBarAction">设置</a>
+  </div>
+
+  <div style="padding:6px 14px; font-size:10.5px; color:var(--text-muted); background:var(--white); border-bottom:1px solid var(--border);">
+    ℹ️ 这是独立标签页，可以放心切换到其它标签、打开新分页，下载不会中断——直接关闭这个标签才会停止。网页链接不会当成文件下载，会新开分页打开。
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Paste links -->
+    <div class="card">
+      <div class="section-label">
+        <div class="label-text">粘贴链接</div>
+        <div class="link-counter" id="linkCount">0 个</div>
+      </div>
+      <textarea id="linkInput"
+        placeholder="将文件链接粘贴到这里，每行一个（也可混在文字里）&#10;&#10;支持任意 http/https 文件链接，例如：&#10;https://muse.ai/files/…/xxx.mp4&#10;https://example.com/files/报告.pdf&#10;https://drive.google.com/file/d/XXXXX/view"></textarea>
+    </div>
+
+    <!-- Parsed files list -->
+    <div class="card" style="overflow:hidden;">
+      <div class="list-header">
+        <div class="label-text" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);">识别到的文件</div>
+        <div class="badge zero" id="parsedCount">0</div>
+      </div>
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+        <div class="progress-text" id="progressText">0 / 0</div>
+      </div>
+      <div class="summary-line" id="summaryLine"></div>
+      <div class="links-list" id="linksList">
+        <div class="empty-hint">
+          <span class="empty-icon">🔗</span>
+          粘贴任意文件链接后自动识别
+        </div>
+      </div>
+      <div class="invalid-wrap" id="invalidWrap" style="display:none;">
+        <div class="invalid-header">⚠ 未识别的行 <span id="invalidCount"></span></div>
+        <div id="invalidList"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <button class="btn btn-ghost" id="clearBtn" style="flex:0.6;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14H6L5 6"/>
+        <path d="M10 11v6M14 11v6"/>
+        <path d="M9 6V4h6v2"/>
+      </svg>
+      清空
+    </button>
+    <button class="btn btn-folder" id="openFolderBtn" type="button" style="display:none;" title="打开本次下载保存的文件夹">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+      </svg>
+      打开文件夹
+    </button>
+    <button class="btn btn-primary" id="downloadBtn" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      全部下载
+    </button>
+  </div>
+
+  <!-- 更新窗口 -->
+  <div class="upd-overlay hidden" id="upd-overlay">
+    <div class="upd-box">
+      <div class="upd-head"><h2>发现新版本</h2><button type="button" class="upd-close" id="upd-close" aria-label="关闭">✕</button></div>
+      <div class="upd-versions"><span class="cur" id="upd-cur"></span><span class="arrow">→</span><span class="new" id="upd-new"></span></div>
+      <p class="upd-name hidden" id="upd-name"></p>
+      <div class="upd-notes hidden" id="upd-notes"></div>
+      <div class="upd-btns"><button type="button" id="upd-ignore">暂时忽略</button><button type="button" class="primary" id="upd-go">前往下载</button></div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</div>
+</body>
+</html>

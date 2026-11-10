@@ -1,0 +1,26 @@
+{
+  "action": {
+    "default_title": "打开批量下载器"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "description": "批量下载任意公开文件链接，自动识别文件名、按日期归类保存；Google Drive 分享链接可自动跳过确认页。Batch download files from any public URL, auto-detected filenames, organized by date.",
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "icons": {
+    "128": "icons/icon128.png",
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png"
+  },
+  "manifest_version": 3,
+  "name": "批量下载器",
+  "options_page": "options.html",
+  "permissions": [
+    "tabs",
+    "downloads",
+    "storage"
+  ],
+  "version": "1.0.0"
+}

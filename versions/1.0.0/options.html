@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<title>批量下载器 · 设置</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --blue-dark:  #0D4EA6;
+    --blue:       #1A6FD4;
+    --blue-light: #EBF3FD;
+    --blue-pale:  #F4F8FF;
+    --orange:     #FF6A00;
+    --orange-mid: #FF8C2A;
+    --white:      #FFFFFF;
+    --text:       #1A2540;
+    --text-mid:   #4A5A7A;
+    --text-muted: #8A96B0;
+    --border:     #D8E4F4;
+    --success:    #10A84C;
+    --danger:     #E03030;
+    --warn:       #F59E0B;
+    --radius:     12px;
+  }
+  body {
+    background: var(--blue-pale);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    display: flex; justify-content: center;
+    padding: 48px 20px;
+  }
+  .wrap { width: 100%; max-width: 520px; }
+  .header {
+    background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 100%);
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 20px 24px;
+    color: white;
+  }
+  .header h1 { font-size: 18px; font-weight: 700; }
+  .header p { font-size: 12px; color: rgba(255,255,255,0.75); margin-top: 4px; }
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    padding: 24px;
+  }
+  .row { margin-bottom: 20px; }
+  .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin-bottom: 8px; }
+  .folder-box {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--blue-pale);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 12px 14px;
+  }
+  .folder-icon { font-size: 20px; }
+  .folder-name { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; flex: 1; word-break: break-all; }
+  .status-line { margin-top: 8px; font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
+  .status-line.ok { color: var(--success); }
+  .status-line.warn { color: var(--warn); }
+  .status-line.muted { color: var(--text-muted); }
+  .btn {
+    height: 42px; padding: 0 18px; border-radius: 9px; border: none;
+    font-family: 'Noto Sans SC', sans-serif; font-size: 13.5px; font-weight: 600;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    width: 100%; justify-content: center; margin-top: 10px;
+  }
+  .btn-primary { background: linear-gradient(135deg, var(--orange-mid), var(--orange)); color: white; }
+  .btn-secondary { background: var(--blue-light); color: var(--blue); border: 1px solid var(--border); }
+  .btn-warn { background: #FFF7E6; color: #B45F06; border: 1px solid rgba(245,158,11,.4); }
+  .hint { font-size: 12px; color: var(--text-muted); line-height: 1.7; margin-top: 6px; }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .mode-option { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.6; margin-bottom: 10px; cursor: pointer; }
+  .mode-option input { margin-top: 3px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>下载文件夹设置</h1>
+      <p>选择一次，以后所有下载都会自动存到这里（按日期自动分子文件夹）</p>
+    </div>
+    <div class="card">
+      <div class="row">
+        <div class="label">当前保存位置</div>
+        <div class="folder-box">
+          <span class="folder-icon">📁</span>
+          <span class="folder-name" id="folderName">尚未设置</span>
+        </div>
+        <div class="status-line muted" id="statusLine">请选择一个文件夹作为固定下载位置</div>
+      </div>
+
+      <button class="btn btn-primary" id="chooseBtn">📂 选择 / 更换保存文件夹</button>
+      <button class="btn btn-warn" id="reauthBtn" style="display:none;">🔑 重新授权此文件夹</button>
+
+      <div class="divider"></div>
+      <div class="row">
+        <div class="label">下载方式</div>
+        <label class="mode-option"><input type="radio" name="downloadMode" value="auto" /> 自动（默认）：有固定文件夹就存到那里，否则改用浏览器下载</label>
+        <label class="mode-option"><input type="radio" name="downloadMode" value="folder" /> 只用固定文件夹：没设置或授权失效时不下载、提示先设置</label>
+        <label class="mode-option"><input type="radio" name="downloadMode" value="browser" /> 只用浏览器下载：保存到浏览器默认下载文件夹（按日期分子文件夹）</label>
+        <div class="status-line muted" id="modeStatus"></div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="hint">
+        说明：<br/>
+        · 支持任意 http/https 文件链接，不限来源；网页链接不会当成文件写盘，会新开分页打开。<br/>
+        · 首次使用请先在此选择一个文件夹，之后点击“全部下载”会自动存入该文件夹，不会再弹保存对话框。<br/>
+        · 如果该文件夹被删除、改名或移动，插件会自动提示“授权已失效”，回到此页面重新选择或重新授权即可；自动模式下会先改用浏览器下载，不卡住整批。<br/>
+        · 浏览器出于安全考虑，有时会在重启后要求重新确认一次授权，这是正常现象。<br/>
+        · 也可以随时点击扩展页面右上角的小图标回到这个设置页。
+      </div>
+    </div>
+  </div>
+
+  <script src="idb.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
